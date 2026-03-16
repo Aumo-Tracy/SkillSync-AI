@@ -1,0 +1,44 @@
+# Environment variables - DO NOT COMMIT!
+.env
+.env.local
+*.env
+backend/.env
+frontend/.env.local
+
+# API Keys
+*_api_key*
+*.pem
+*.key
+
+# Python
+__pycache__/
+*.py[cod]
+venv/
+env/
+*.egg-info/
+
+# Node
+node_modules/
+.next/
+out/
+*.log
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Data
+data/embeddings/
+*.db
+chromadb/
+
+# Logs
+logs/
+*.log
+
+

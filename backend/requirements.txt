@@ -1,0 +1,45 @@
+# FastAPI and Server
+fastapi==0.109.0
+uvicorn[standard]==0.27.0
+python-multipart
+python-dotenv
+pydantic
+pydantic-settings
+
+
+# LangChain
+langchain==0.1.4
+langchain-openai==0.0.5
+langchain-community==0.0.16
+openai==1.10.0
+tiktoken
+
+# Vector Stores
+pinecone-client>=3.2.2,<4.0.0
+chromadb
+
+
+# Supabase
+supabase==2.3.0
+
+httpx==0.24.1
+
+# Security & Validation
+slowapi
+bleach
+email-validator
+aiofiles
+tenacity
+python-json-logger
+
+bleach==6.1.0
+
+# Testing
+pytest
+pytest-asyncio
+pytest-cov
+
+
+
+# Production
+gunicorn==21.2.0
