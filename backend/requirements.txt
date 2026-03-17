@@ -12,7 +12,7 @@ langchain==0.1.4
 langchain-openai==0.0.5
 langchain-community==0.0.16
 openai==1.10.0
-tiktoken
+tiktoken=0.7.0
 
 # Vector Stores
 pinecone-client>=3.2.2,<4.0.0
