@@ -6,7 +6,6 @@ python-dotenv
 pydantic
 pydantic-settings
 
-
 # LangChain
 langchain==0.1.4
 langchain-openai==0.0.5
@@ -18,7 +17,6 @@ tiktoken==0.7.0
 pinecone-client>=3.2.2,<4.0.0
 chromadb
 
-
 # Supabase
 supabase==2.3.0
 
@@ -26,20 +24,16 @@ httpx==0.24.1
 
 # Security & Validation
 slowapi
-bleach
+bleach==6.1.0
 email-validator
 aiofiles
 tenacity
 python-json-logger
 
-bleach==6.1.0
-
 # Testing
 pytest
 pytest-asyncio
 pytest-cov
-
-
 
 # Production
 gunicorn==21.2.0
