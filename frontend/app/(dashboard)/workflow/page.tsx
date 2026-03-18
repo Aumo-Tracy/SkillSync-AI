@@ -243,9 +243,12 @@ export default function WorkflowPage() {
   }
 
   const openEditor = (resume: TailoredResume) => {
+    console.log('Resume data:', JSON.stringify(resume, null, 2))
     setEditingResume({
-      full_name: user?.full_name || '', email: user?.email || '',
-      job_title: resume.job_title || '', summary: (resume as any).summary || '',
+      full_name: user?.full_name || '',
+      email: user?.email || '',
+      job_title: resume.job_title || '',
+      summary: (resume as any).summary || '',
       experience: (resume as any).experience || [],
       skills: (resume as any).skills || { technical: [], tools: [], soft: [] },
       education: (resume as any).education || [],
