@@ -27,12 +27,13 @@ export function useWorkflow() {
         
       case 'hitl_required':
         store.setStatus('awaiting_hitl')
-        if (event.data.jobs) store.setDiscoveredJobs(event.data.jobs)
-        // Capture workflow ID at the HITL pause point
-        if (event.workflow_run_id) {
-          store.setWorkflowRunId(event.workflow_run_id)
+        if (event.data.jobs && event.data.jobs.length > 0) {
+          store.setDiscoveredJobs(event.data.jobs)
+        } else if (store.discoveredJobs.length === 0) {
+          // jobs were set in agent_completed, status just needs updating
         }
-        break
+        store.setCurrentAgent('hitl_job_approval')
+        break  // ✅ FIXED: prevent fall-through
         
       case 'pipeline_complete':
         store.setStatus('completed')
@@ -47,38 +48,56 @@ export function useWorkflow() {
   }, [store])
 
   const parseSSEStream = useCallback(async (response: Response) => {
-    const reader = response.body?.getReader()
-    const decoder = new TextDecoder()
-    
-    if (!reader) return
-    
-    store.setStreaming(true)
-    
-    try {
-      while (true) {
-        const { done, value } = await reader.read()
-        if (done) break
-        
-        const chunk = decoder.decode(value, { stream: true })
-        const lines = chunk.split('\n')
-        
-        for (const line of lines) {
-          if (line.startsWith('data: ')) {
-            try {
-              const event: SSEEvent = JSON.parse(line.slice(6))
-              store.addEvent(event)
-              handleEvent(event)
-            } catch {
-              // Skip malformed events
-            }
+  const reader = response.body?.getReader()
+  const decoder = new TextDecoder()
+  
+  if (!reader) return
+  
+  store.setStreaming(true)
+  let buffer = ''
+  
+  try {
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+      
+      buffer += decoder.decode(value, { stream: true })
+      
+      // Process complete lines only
+      const lines = buffer.split('\n')
+      buffer = lines.pop() || '' // keep incomplete last line in buffer
+      
+      for (const line of lines) {
+        if (line.startsWith('data: ')) {
+          try {
+            const event: SSEEvent = JSON.parse(line.slice(6))
+            console.log('SSE EVENT:', event.event_type, event.data?.jobs?.length)
+            store.addEvent(event)
+            handleEvent(event)
+          } catch {
+            // Skip malformed events
           }
         }
       }
-    } finally {
-      store.setStreaming(false)
-      reader.releaseLock()
     }
-  }, [store, handleEvent])
+    // Process any remaining buffer
+    if (buffer.startsWith('data: ')) {
+      try {
+        const event: SSEEvent = JSON.parse(buffer.slice(6))
+        store.addEvent(event)
+        handleEvent(event)
+      } catch {}
+    }
+  } finally {
+    store.setStreaming(false)
+    reader.releaseLock()
+    // Safety net
+    const state = useWorkflowStore.getState()
+    if (state.discoveredJobs.length > 0 && state.status === 'running') {
+      store.setStatus('awaiting_hitl')
+    }
+  }
+}, [store, handleEvent])
   
   const startWorkflow = useCallback(async (
     resumeId: string,
@@ -89,12 +108,19 @@ export function useWorkflow() {
     
     try {
       const response = await workflowApi.start(resumeId, searchParams)
+      console.log('Response status:', response.status, 'ok:', response.ok)
       await parseSSEStream(response)
+
+      // If stream ended but we have jobs, ensure HITL status is set
+      const state = useWorkflowStore.getState()
+      if (state.discoveredJobs.length > 0 && state.status === 'running') {
+        store.setStatus('awaiting_hitl')
+      }
     } catch (error: any) {
       store.setError(error.message)
       store.setStatus('failed')
     }
-  }, [parseSSEStream, store])
+  }, [parseSSEStream, store]) // ✅ FIXED: closed function properly
   
   const approveJobs = useCallback(async (
     workflowRunId: string,

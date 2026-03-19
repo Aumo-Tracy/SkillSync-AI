@@ -1,5 +1,4 @@
 import httpx
-import re
 from app.agents.base import BaseAgent
 from app.agents.state import WorkflowState
 from app.core.config import settings
@@ -7,106 +6,98 @@ from app.utils.circuit_breaker import CircuitBreaker
 
 circuit_breaker = CircuitBreaker(failure_threshold=3, recovery_timeout=60)
 
-SENIOR_TITLE_KEYWORDS = [
-    "senior", "sr.", "sr ", "lead", "principal", "head of",
-    "director", "vp ", "vice president", "staff engineer",
-    "engineering manager", "cto", "chief", "architect",
-    "manager", "team lead"
-]
-
-JUNIOR_FRIENDLY_KEYWORDS = [
-    "junior", "entry level", "entry-level", "graduate", "intern",
-    "early career", "new grad", "bootcamp", "self-taught",
-    "no experience required", "0-2 years", "1-2 years", "1+ year",
-    "2+ years", "2 years", "associate"
-]
-
-INACCESSIBLE_LOCATION_KEYWORDS = [
-    "must be based in", "must reside in", "must live in",
-    "on-site only", "onsite only", "in-office only",
-    "relocation required", "must relocate",
-    "germany only", "austria only", "switzerland only",
-    "eu only", "europe only", "european union only",
-    "uk only", "united kingdom only",
-    "us only", "usa only", "united states only",
-    "canada only", "australia only",
-    "no remote", "not remote",
-    "visa sponsorship not", "no visa",
-    "authorized to work in", "right to work in",
-    "work permit required",
-]
-
-# Job titles/keywords that are clearly NOT software/AI roles
-IRRELEVANT_TITLE_KEYWORDS = [
-    "office assistant", "office manager", "executive assistant", "administrative",
+NON_TECH_BLOCKLIST = [
+    "electrical engineer", "mechanical engineer", "civil engineer",
+    "hardware engineer", "network engineer", "security engineer",
+    "business analyst", "business manager", "business development",
+    "sales", "account executive", "account manager",
+    "office assistant", "office manager", "administrative",
     "receptionist", "secretary", "clerk",
-    "recruiter", "recruiting", "talent acquisition", "hr ", "human resources",
-    "people operations", "people partner", "engagement partner",
-    "sales", "account executive", "account manager", "business development",
-    "account representative", "sales representative", "sdr", "bdr",
-    "marketing", "copywriter", "content writer", "content creator",
-    "seo specialist", "social media", "community manager",
-    "customer success", "customer support", "customer service",
-    "support specialist", "support agent", "help desk", "helpdesk",
+    "recruiter", "talent acquisition", "hr ", "human resources",
+    "people operations",
+    "marketing", "copywriter", "content writer", "social media",
+    "customer support", "customer success", "customer service",
+    "support specialist", "help desk",
     "pharmacist", "pharmacy", "nurse", "medical", "healthcare",
-    "clinical", "therapist", "dental", "physician",
-    "legal", "attorney", "lawyer", "paralegal", "compliance officer",
-    "finance", "accounting", "bookkeeper", "cfo", "controller",
-    "financial analyst", "tax",
-    "graphic design", "graphic designer", "ui designer", "ux designer",
-    "visual designer", "motion designer",
-    "data labeling", "data annotation", "ai trainer", "ai training",
-    "ai rater", "internet rater", "search evaluator", "quality rater",
-    "transcription", "translation", "freelance writer",
-    "operations manager", "scrum master", "agile coach",
-    "project coordinator", "program coordinator",
+    "attorney", "lawyer", "paralegal", "legal ",
+    "financial analyst", "accountant", "bookkeeper", "cfo",
+    "graphic designer", "ui designer", "ux designer",
+    "data labeling", "data annotation", "ai rater", "internet rater",
+    "quality rater", "search evaluator",
     "red team", "penetration tester", "threat intelligence",
-    "offensive security", "malware analyst",
-    "crypto trader", "crypto market", "forex", "trading specialist",
-    "virtual assistant", "data entry", "research assistant",
+    "crypto market", "forex trader",
+    "virtual assistant", "data entry",
+    "fleet management", "edge systems",
 ]
 
-# At least one of these must appear in title OR description for the job to pass
-REQUIRED_TECH_TITLE_KEYWORDS = [
-    "developer", "engineer", "programmer",
+TECH_TITLE_KEYWORDS = [
     "python", "backend", "back-end", "back end",
-    "frontend", "front-end", "full stack", "fullstack", "full-stack",
-    "software", "devops", "sre ",
-    "data scientist", "data engineer", "ml engineer", "ai engineer",
-    "machine learning", "llm", "langchain", "nlp engineer",
-    "cloud engineer", "platform engineer", "infrastructure engineer",
-    "automation engineer", "qa engineer", "test engineer",
-    "api developer", "integration developer", "prompt engineer",
+    "frontend", "front-end",
+    "full stack", "fullstack", "full-stack",
+    "software developer", "software engineer",
+    "web developer", "web engineer",
+    "data scientist", "data engineer", "data analyst",
+    "ml engineer", "ai engineer", "machine learning",
+    "llm", "langchain", "prompt engineer",
+    "cloud engineer", "platform engineer",
+    "devops engineer", "site reliability",
+    "automation engineer", "qa engineer",
+    "api developer", "integration developer",
+    "mobile developer", "android developer", "ios developer",
+    "node.js", "react developer", "django", "fastapi",
+    " ai ", "artificial intelligence",
 ]
 
-ADZUNA_SEARCH_TERMS = [
+MANAGEMENT_BLOCKLIST = [
+    "engineering manager", "team lead", "head of", "vp ",
+    "vice president", "director", "cto", "chief",
+]
+
+SOFT_SENIOR = ["senior", "sr.", "lead", "principal", "staff", "architect"]
+
+JUNIOR_KEYWORDS = [
+    "junior", "entry level", "entry-level", "graduate",
+    "new grad", "associate", "intern", "trainee",
+    "0-2 years", "1-2 years", "no experience"
+]
+
+AI_KEYWORDS = [
+    "llm", "langchain", "openai", "gpt", "ai engineer",
+    "prompt engineer", "machine learning", "deep learning"
+]
+
+ADZUNA_TERMS = [
     "junior python developer",
     "junior backend developer",
-    "junior developer remote",
-    "python developer entry level",
+    "junior AI engineer",
+    "machine learning engineer",
+    "junior software engineer remote",
 ]
 
-REMOTIVE_SEARCH_TERMS = [
-    "junior python",
-    "junior developer",
-    "junior backend",
-    "entry level developer",
+REMOTIVE_CATEGORIES = ["software-dev", "dev-ops", "data"]
+
+REMOTIVE_TERMS = [
     "python developer",
-]
-
-# Remotive category slugs for software engineering only
-REMOTIVE_CATEGORIES = [
-    "software-dev",
-    "dev-ops",
-    "data",
-]
-
-ARBEITNOW_SEARCH_TERMS = [
     "AI engineer",
-    "LLM developer",
-    "python developer",
+    "machine learning",
     "backend developer",
-    "AI automation",
+    "LLM developer",
+]
+
+ARBEITNOW_TERMS = [
+    "python developer",
+    "AI engineer",
+    "machine learning engineer",
+    "backend developer",
+    "LLM engineer",
+]
+
+LOCATION_BLOCK = [
+    "must be based in", "must reside in", "must live in",
+    "relocation required", "must relocate",
+    "no remote", "not remote",
+    "visa sponsorship not available", "no visa",
+    "authorized to work in", "right to work in",
 ]
 
 
@@ -115,351 +106,280 @@ class JobDiscoveryAgent(BaseAgent):
         super().__init__("job_discovery")
 
     async def execute(self, state: WorkflowState) -> dict:
-        user_profile = state.get("user_profile", {})
-        profile_roles = user_profile.get("target_roles", [])
-
-        if profile_roles:
-            adzuna_terms = [f"junior {r}" for r in profile_roles[:3]] + ADZUNA_SEARCH_TERMS[:2]
-        else:
-            adzuna_terms = ADZUNA_SEARCH_TERMS
-
         all_jobs = []
 
-        adzuna_jobs = await self._fetch_adzuna(adzuna_terms)
+        adzuna_jobs = await self._fetch_adzuna()
         all_jobs.extend(adzuna_jobs)
+        self.logger.info(f"After Adzuna: {len(all_jobs)} total")
 
-        remotive_jobs = await self._fetch_remotive(REMOTIVE_SEARCH_TERMS)
+        remotive_jobs = await self._fetch_remotive()
         all_jobs.extend(remotive_jobs)
+        self.logger.info(f"After Remotive: {len(all_jobs)} total")
 
         remoteok_jobs = await self._fetch_remoteok()
         all_jobs.extend(remoteok_jobs)
+        self.logger.info(f"After RemoteOK: {len(all_jobs)} total")
 
-        arbeitnow_jobs = await self._fetch_arbeitnow(ARBEITNOW_SEARCH_TERMS)
+        arbeitnow_jobs = await self._fetch_arbeitnow()
         all_jobs.extend(arbeitnow_jobs)
+        self.logger.info(f"After Arbeitnow: {len(all_jobs)} total")
 
-        # Filter pipeline
-        filtered_jobs = self._filter_by_seniority(all_jobs)
-        filtered_jobs = self._filter_by_relevance(filtered_jobs, profile_roles)
-        filtered_jobs = self._filter_by_accessibility(filtered_jobs)
+        step1 = self._filter_non_tech(all_jobs)
+        self.logger.info(f"After non-tech filter: {len(step1)}")
 
-        # Deduplicate
-        seen_urls = set()
-        seen_titles_companies = set()
-        unique_jobs = []
-        for job in filtered_jobs:
-            url = job.get("url", "")
-            title_company = f"{job.get('title', '').lower().strip()}|{job.get('company', '').lower().strip()}"
-            if url and url not in seen_urls and title_company not in seen_titles_companies:
-                seen_urls.add(url)
-                seen_titles_companies.add(title_company)
-                unique_jobs.append(job)
+        step2 = self._filter_management(step1)
+        self.logger.info(f"After management filter: {len(step2)}")
 
-        ranked_jobs = self._rank_jobs(unique_jobs)
+        step3 = self._filter_remote_only(step2)
+        self.logger.info(f"After remote filter: {len(step3)}")
 
-        self.logger.info(
-            f"Job discovery complete | "
-            f"total={len(all_jobs)} | after_filter={len(filtered_jobs)} | "
-            f"unique={len(unique_jobs)} unique jobs"
-        )
+        unique = self._deduplicate(step3)
+        self.logger.info(f"After dedup: {len(unique)}")
+
+        ranked = self._rank(unique)
+        self.logger.info(f"Final: {len(ranked)} jobs returning to user")
 
         return {
-            "discovered_jobs": ranked_jobs,
+            "discovered_jobs": ranked[:30],
             "current_agent": "job_discovery",
             "hitl_pause_point": "job_approval"
         }
 
-    def _filter_by_seniority(self, jobs: list[dict]) -> list[dict]:
-        filtered = []
+    def _filter_non_tech(self, jobs):
+        result = []
         for job in jobs:
             title = job.get("title", "").lower()
-            is_senior = any(kw in title for kw in SENIOR_TITLE_KEYWORDS)
-            if not is_senior:
-                filtered.append(job)
+            if any(bad in title for bad in NON_TECH_BLOCKLIST):
+                self.logger.debug(f"Blocked non-tech: {job.get('title')}")
+                continue
+            if any(good in title for good in TECH_TITLE_KEYWORDS):
+                result.append(job)
             else:
-                self.logger.debug(f"Filtered senior role: {job.get('title')}")
-        return filtered
+                self.logger.debug(f"No tech keyword: {job.get('title')}")
+        return result
 
-    def _filter_by_relevance(self, jobs: list[dict], profile_roles: list[str]) -> list[dict]:
-        extra_title_keywords = [r.lower() for r in profile_roles] if profile_roles else []
-        all_required = REQUIRED_TECH_TITLE_KEYWORDS + extra_title_keywords
-        filtered = []
+    def _filter_management(self, jobs):
+        result = []
         for job in jobs:
             title = job.get("title", "").lower()
-            is_irrelevant = any(kw in title for kw in IRRELEVANT_TITLE_KEYWORDS)
-            if is_irrelevant:
-                self.logger.debug(f"Relevance filter [irrelevant]: {job.get('title')}")
+            if any(m in title for m in MANAGEMENT_BLOCKLIST):
+                self.logger.debug(f"Blocked management: {job.get('title')}")
                 continue
-            has_tech_title = any(kw in title for kw in all_required)
-            if not has_tech_title:
-                self.logger.debug(f"Relevance filter [no tech keyword]: {job.get('title')}")
-                continue
-            filtered.append(job)
-        self.logger.info(f"Relevance filter: {len(jobs)} -> {len(filtered)} jobs")
-        return filtered
+            result.append(job)
+        return result
 
-    def _filter_by_accessibility(self, jobs: list[dict]) -> list[dict]:
-        filtered = []
+    def _filter_remote_only(self, jobs):
+        result = []
         for job in jobs:
-            location_type = job.get("location_type", "")
-
-            if location_type != "remote_international":
-                self.logger.debug(f"Filtered non-remote job: {job.get('title')} [{location_type}]")
+            if job.get("location_type") != "remote_international":
                 continue
-
-            description = (job.get("description", "") or "").lower()
-            location = (job.get("location", "") or "").lower()
-            combined = description + " " + location
-
-            is_restricted = any(kw in combined for kw in INACCESSIBLE_LOCATION_KEYWORDS)
-            if is_restricted:
-                self.logger.debug(f"Filtered location-restricted job: {job.get('title')} @ {job.get('company')}")
+            desc = (job.get("description", "") or "").lower()
+            loc = (job.get("location", "") or "").lower()
+            if any(bad in desc + " " + loc for bad in LOCATION_BLOCK):
                 continue
+            result.append(job)
+        return result
 
-            filtered.append(job)
-
-        self.logger.info(f"Accessibility filter: {len(jobs)} → {len(filtered)} jobs")
-        return filtered
-
-    def _score_job(self, job: dict) -> int:
-        score = 0
-        title = job.get("title", "").lower()
-        description = (job.get("description", "") or "").lower()
-        combined = title + " " + description
-
-        for kw in JUNIOR_FRIENDLY_KEYWORDS:
-            if kw in combined:
-                score += 10
-
-        score += 15  # all remaining jobs are remote_international
-
-        if job.get("source") in ["remotive", "remoteok", "arbeitnow"]:
-            score += 10
-
-        if job.get("salary_min"):
-            score += 5
-
-        location = (job.get("location", "") or "").lower()
-        if any(kw in location for kw in ["worldwide", "global", "anywhere", "international"]):
-            score += 10
-
-        # Boost AI/LLM specific roles
-        if any(kw in combined for kw in ["llm", "langchain", "ai engineer", "prompt", "openai", "gpt"]):
-            score += 15
-
-        return score
-
-    def _rank_jobs(self, jobs: list[dict]) -> list[dict]:
+    def _deduplicate(self, jobs):
+        seen = set()
+        unique = []
         for job in jobs:
-            job["relevance_score"] = self._score_job(job)
-        return sorted(jobs, key=lambda x: x.get("relevance_score", 0), reverse=True)
+            key = f"{job.get('title','').lower()}|{job.get('company','').lower()}"
+            if key not in seen:
+                seen.add(key)
+                unique.append(job)
+        return unique
+
+    def _rank(self, jobs):
+        def score(job):
+            s = 0
+            text = (job.get("title", "") + " " + job.get("description", "")).lower()
+            title = job.get("title", "").lower()
+            for kw in JUNIOR_KEYWORDS:
+                if kw in text:
+                    s += 20
+            for kw in AI_KEYWORDS:
+                if kw in text:
+                    s += 15
+            if "python" in text:
+                s += 10
+            if "backend" in text or "back-end" in text:
+                s += 10
+            if job.get("salary_min"):
+                s += 5
+            if any(sk in title for sk in SOFT_SENIOR):
+                s -= 30
+            return s
+
+        for job in jobs:
+            job["relevance_score"] = score(job)
+        return sorted(jobs, key=lambda x: x["relevance_score"], reverse=True)
 
     # ─── Adzuna ───────────────────────────────────────────────────────────────
 
-    async def _fetch_adzuna(self, search_terms: list[str]) -> list[dict]:
-        if not settings.adzuna_app_id or not settings.adzuna_api_key:
-            self.logger.warning("Adzuna credentials not configured, skipping")
+    async def _fetch_adzuna(self):
+        if not (settings.adzuna_app_id and settings.adzuna_api_key):
+            self.logger.warning("Adzuna not configured")
             return []
-
         jobs = []
         async with httpx.AsyncClient(timeout=15.0) as client:
             for country in ["us", "gb"]:
-                for term in search_terms[:3]:
+                for term in ADZUNA_TERMS[:3]:
                     try:
-                        response = await client.get(
+                        resp = await client.get(
                             f"https://api.adzuna.com/v1/api/jobs/{country}/search/1",
                             params={
                                 "app_id": settings.adzuna_app_id,
                                 "app_key": settings.adzuna_api_key,
                                 "what": term,
                                 "where": "remote",
-                                "content-type": "application/json",
                                 "results_per_page": 10,
                             }
                         )
-                        if response.status_code == 200:
-                            data = response.json()
-                            for job in data.get("results", []):
-                                normalized = self._normalize_adzuna_job(job)
-                                if normalized["location_type"] == "remote_international":
-                                    jobs.append(normalized)
-                        else:
-                            self.logger.warning(f"Adzuna [{country}] returned {response.status_code} for term: {term}")
+                        if resp.status_code == 200:
+                            for j in resp.json().get("results", []):
+                                desc = j.get("description", "").lower()
+                                loc_type = "remote_international" if "remote" in desc else "fulltime_local"
+                                jobs.append({
+                                    "external_id": str(j.get("id", "")),
+                                    "title": j.get("title", ""),
+                                    "company": j.get("company", {}).get("display_name", ""),
+                                    "location": j.get("location", {}).get("display_name", ""),
+                                    "location_type": loc_type,
+                                    "description": j.get("description", ""),
+                                    "url": j.get("redirect_url", ""),
+                                    "salary_min": j.get("salary_min"),
+                                    "salary_max": j.get("salary_max"),
+                                    "source": "adzuna",
+                                    "required_skills": []
+                                })
                     except Exception as e:
-                        self.logger.error(f"Adzuna [{country}] fetch failed for term '{term}': {e}")
-                        continue
-
-        self.logger.info(f"Adzuna returned {len(jobs)} remote jobs")
+                        self.logger.error(f"Adzuna error [{country}][{term}]: {e}")
+        self.logger.info(f"Adzuna returned {len(jobs)} raw jobs")
         return jobs
-
-    def _normalize_adzuna_job(self, job: dict) -> dict:
-        description = job.get("description", "").lower()
-        location_type = "fulltime_local"
-        if "remote" in description:
-            location_type = "remote_international"
-        elif "hybrid" in description:
-            location_type = "hybrid_local"
-
-        return {
-            "external_id": job.get("id"),
-            "title": job.get("title", ""),
-            "company": job.get("company", {}).get("display_name", ""),
-            "location": job.get("location", {}).get("display_name", ""),
-            "location_type": location_type,
-            "description": job.get("description", ""),
-            "url": job.get("redirect_url", ""),
-            "salary_min": job.get("salary_min"),
-            "salary_max": job.get("salary_max"),
-            "source": "adzuna",
-            "required_skills": []
-        }
 
     # ─── Remotive ─────────────────────────────────────────────────────────────
 
-    async def _fetch_remotive(self, search_terms: list[str]) -> list[dict]:
+    async def _fetch_remotive(self):
         jobs = []
         async with httpx.AsyncClient(timeout=15.0) as client:
-            # Fetch by category first — software-dev, devops, data only
-            for category in REMOTIVE_CATEGORIES:
+            for cat in REMOTIVE_CATEGORIES:
                 try:
-                    response = await client.get(
+                    resp = await client.get(
                         "https://remotive.com/api/remote-jobs",
-                        params={"category": category, "limit": 15}
+                        params={"category": cat, "limit": 20}
                     )
-                    if response.status_code == 200:
-                        data = response.json()
-                        for job in data.get("jobs", []):
-                            jobs.append(self._normalize_remotive_job(job))
-                    else:
-                        self.logger.warning(f"Remotive category [{category}] returned {response.status_code}")
+                    if resp.status_code == 200:
+                        for j in resp.json().get("jobs", []):
+                            jobs.append({
+                                "external_id": str(j.get("id", "")),
+                                "title": j.get("title", ""),
+                                "company": j.get("company_name", ""),
+                                "location": j.get("candidate_required_location", "Worldwide"),
+                                "location_type": "remote_international",
+                                "description": j.get("description", ""),
+                                "url": j.get("url", ""),
+                                "salary_min": None,
+                                "salary_max": None,
+                                "source": "remotive",
+                                "required_skills": j.get("tags", [])
+                            })
                 except Exception as e:
-                    self.logger.error(f"Remotive category [{category}] failed: {e}")
-                    continue
+                    self.logger.error(f"Remotive [{cat}] error: {e}")
 
-            # Also search by terms for more targeted results
-            for term in search_terms[:3]:
+            for term in REMOTIVE_TERMS:
                 try:
-                    response = await client.get(
+                    resp = await client.get(
                         "https://remotive.com/api/remote-jobs",
-                        params={"search": term, "limit": 8}
+                        params={"search": term, "limit": 10}
                     )
-                    if response.status_code == 200:
-                        data = response.json()
-                        for job in data.get("jobs", []):
-                            jobs.append(self._normalize_remotive_job(job))
+                    if resp.status_code == 200:
+                        for j in resp.json().get("jobs", []):
+                            jobs.append({
+                                "external_id": str(j.get("id", "")),
+                                "title": j.get("title", ""),
+                                "company": j.get("company_name", ""),
+                                "location": j.get("candidate_required_location", "Worldwide"),
+                                "location_type": "remote_international",
+                                "description": j.get("description", ""),
+                                "url": j.get("url", ""),
+                                "salary_min": None,
+                                "salary_max": None,
+                                "source": "remotive",
+                                "required_skills": j.get("tags", [])
+                            })
                 except Exception as e:
-                    self.logger.error(f"Remotive search [{term}] failed: {e}")
-                    continue
+                    self.logger.error(f"Remotive search [{term}] error: {e}")
 
         self.logger.info(f"Remotive returned {len(jobs)} raw jobs")
         return jobs
 
-    def _normalize_remotive_job(self, job: dict) -> dict:
-        return {
-            "external_id": str(job.get("id")),
-            "title": job.get("title", ""),
-            "company": job.get("company_name", ""),
-            "location": job.get("candidate_required_location", "Worldwide"),
-            "location_type": "remote_international",
-            "description": job.get("description", ""),
-            "url": job.get("url", ""),
-            "salary_min": None,
-            "salary_max": None,
-            "source": "remotive",
-            "required_skills": job.get("tags", [])
-        }
-
     # ─── RemoteOK ─────────────────────────────────────────────────────────────
 
-    async def _fetch_remoteok(self) -> list[dict]:
+    async def _fetch_remoteok(self):
         jobs = []
         try:
             async with httpx.AsyncClient(timeout=15.0) as client:
-                response = await client.get(
+                resp = await client.get(
                     "https://remoteok.com/api",
-                    headers={
-                        "User-Agent": "Mozilla/5.0 (compatible; JobBot/1.0)",
-                        "Accept": "application/json"
-                    }
+                    headers={"User-Agent": "Mozilla/5.0", "Accept": "application/json"}
                 )
-                if response.status_code == 200:
-                    data = response.json()
-                    for job in data[1:]:
-                        if not isinstance(job, dict):
+                if resp.status_code == 200:
+                    for j in resp.json()[1:]:
+                        if not isinstance(j, dict):
                             continue
-                        normalized = self._normalize_remoteok_job(job)
-                        if normalized:
-                            jobs.append(normalized)
-                        if len(jobs) >= 20:
+                        title = j.get("position", "")
+                        if not title:
+                            continue
+                        jobs.append({
+                            "external_id": f"remoteok_{j.get('id', '')}",
+                            "title": title,
+                            "company": j.get("company", ""),
+                            "location": "Remote (Worldwide)",
+                            "location_type": "remote_international",
+                            "description": (j.get("description", "") or "")[:2000],
+                            "url": j.get("url", ""),
+                            "salary_min": j.get("salary_min") or None,
+                            "salary_max": j.get("salary_max") or None,
+                            "source": "remoteok",
+                            "required_skills": j.get("tags", [])
+                        })
+                        if len(jobs) >= 30:
                             break
-                else:
-                    self.logger.warning(f"RemoteOK returned {response.status_code}")
         except Exception as e:
-            self.logger.error(f"RemoteOK fetch failed: {e}")
-
-        self.logger.info(f"RemoteOK returned {len(jobs)} jobs")
+            self.logger.error(f"RemoteOK error: {e}")
+        self.logger.info(f"RemoteOK returned {len(jobs)} raw jobs")
         return jobs
-
-    def _normalize_remoteok_job(self, job: dict) -> dict:
-        title = job.get("position", "")
-        if not title:
-            return None
-        return {
-            "external_id": f"remoteok_{job.get('id', '')}",
-            "title": title,
-            "company": job.get("company", ""),
-            "location": "Remote (Worldwide)",
-            "location_type": "remote_international",
-            "description": job.get("description", "")[:2000],
-            "url": job.get("url", ""),
-            "salary_min": job.get("salary_min") or None,
-            "salary_max": job.get("salary_max") or None,
-            "source": "remoteok",
-            "required_skills": job.get("tags", [])
-        }
 
     # ─── Arbeitnow ────────────────────────────────────────────────────────────
 
-    async def _fetch_arbeitnow(self, roles: list[str]) -> list[dict]:
+    async def _fetch_arbeitnow(self):
         jobs = []
-        search_terms = roles[:3] if roles else ["python developer", "AI engineer", "backend developer"]
-
         async with httpx.AsyncClient(timeout=15.0) as client:
-            for term in search_terms:
+            for term in ARBEITNOW_TERMS:
                 try:
-                    response = await client.get(
+                    resp = await client.get(
                         "https://www.arbeitnow.com/api/job-board-api",
-                        params={
-                            "search": term,
-                            "remote": "true",
-                            "page": 1,
-                            "language": "en"
-                        }
+                        params={"search": term, "remote": "true", "page": 1, "language": "en"}
                     )
-                    if response.status_code == 200:
-                        data = response.json()
-                        for job in data.get("data", [])[:10]:
-                            if job.get("remote"):
-                                jobs.append(self._normalize_arbeitnow_job(job))
-                    else:
-                        self.logger.warning(f"Arbeitnow returned {response.status_code} for term: {term}")
+                    if resp.status_code == 200:
+                        for j in resp.json().get("data", [])[:10]:
+                            if not j.get("remote"):
+                                continue
+                            jobs.append({
+                                "external_id": f"arbeitnow_{j.get('slug', '')}",
+                                "title": j.get("title", ""),
+                                "company": j.get("company_name", ""),
+                                "location": j.get("location", "Remote"),
+                                "location_type": "remote_international",
+                                "description": (j.get("description", "") or "")[:2000],
+                                "url": j.get("url", ""),
+                                "salary_min": None,
+                                "salary_max": None,
+                                "source": "arbeitnow",
+                                "required_skills": j.get("tags", [])
+                            })
                 except Exception as e:
-                    self.logger.error(f"Arbeitnow fetch failed for term '{term}': {e}")
-                    continue
-
-        self.logger.info(f"Arbeitnow returned {len(jobs)} remote jobs")
+                    self.logger.error(f"Arbeitnow [{term}] error: {e}")
+        self.logger.info(f"Arbeitnow returned {len(jobs)} raw jobs")
         return jobs
-
-    def _normalize_arbeitnow_job(self, job: dict) -> dict:
-        return {
-            "external_id": f"arbeitnow_{job.get('slug', '')}",
-            "title": job.get("title", ""),
-            "company": job.get("company_name", ""),
-            "location": job.get("location", "Remote"),
-            "location_type": "remote_international" if job.get("remote") else "fulltime_local",
-            "description": job.get("description", "")[:2000],
-            "url": job.get("url", ""),
-            "salary_min": None,
-            "salary_max": None,
-            "source": "arbeitnow",
-            "required_skills": job.get("tags", [])
-        }
