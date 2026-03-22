@@ -120,6 +120,7 @@ Return ONLY a valid JSON object with this structure:
             result = json.loads(clean)
             result["base_resume_id"] = resume.get("id")
             result["match_score"] = analysis.get("match_score", 0)
+            result["learning_roadmap"] = analysis.get("learning_roadmap", [])
             return result
         except json.JSONDecodeError:
             self.logger.error(f"Failed to parse tailored resume JSON")

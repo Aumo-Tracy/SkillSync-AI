@@ -1,5 +1,6 @@
 from pydantic_settings import BaseSettings
-from typing import Literal
+from pydantic import Field
+from typing import Literal, Optional
 
 class Settings(BaseSettings):
     # App
@@ -37,6 +38,11 @@ class Settings(BaseSettings):
     max_requests_per_minute: int = 50
     monthly_token_budget: int = 500000
 
+    # LangChain
+    langchain_tracing_v2: bool = Field(default=False, alias="LANGCHAIN_TRACING_V2")
+    langchain_endpoint: str = Field(default="https://api.smith.langchain.com", alias="LANGCHAIN_ENDPOINT")
+    langchain_api_key: Optional[str] = Field(default=None, alias="LANGCHAIN_API_KEY")
+    langchain_project: str = Field(default="skillsync-ai", alias="LANGCHAIN_PROJECT")
     class Config:
         env_file = ".env"
         case_sensitive = False

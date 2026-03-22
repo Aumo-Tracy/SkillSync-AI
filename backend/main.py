@@ -10,6 +10,15 @@ from app.db.qdrant_client import get_qdrant_client, ensure_collections
 from app.db.redis_client import get_redis_client, close_redis_client
 from app.db.supabase_client import get_supabase_client
 from app.api.routes import auth, workflow, jobs, resume, feedback
+import os
+from app.core.config import settings
+
+# LangSmith tracing
+if settings.langchain_tracing_v2 and settings.langchain_api_key:
+    os.environ["LANGCHAIN_TRACING_V2"] = "true"
+    os.environ["LANGCHAIN_ENDPOINT"] = settings.langchain_endpoint
+    os.environ["LANGCHAIN_API_KEY"] = settings.langchain_api_key
+    os.environ["LANGCHAIN_PROJECT"] = settings.langchain_project
 
 logger = get_logger(__name__)
 

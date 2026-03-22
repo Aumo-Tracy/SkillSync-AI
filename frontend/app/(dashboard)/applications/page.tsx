@@ -222,6 +222,38 @@ export default function ApplicationsPage() {
                                 </div>
                               )}
 
+                              {/* Learning Roadmap */}
+{(resume as any).learning_roadmap?.length > 0 && (
+  <div style={{ marginTop: '12px' }}>
+    <p style={{ color: '#64748b', fontSize: '12px', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+      Skills to Learn
+    </p>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+      {(resume as any).learning_roadmap.slice(0, 3).map((item: any, j: number) => (
+        <div key={j} style={{
+          padding: '10px 14px',
+          background: 'rgba(167, 139, 250, 0.06)',
+          border: '1px solid rgba(167, 139, 250, 0.15)',
+          borderRadius: '8px'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
+            <p style={{ color: '#a78bfa', fontSize: '13px', fontWeight: 600 }}>{item.skill}</p>
+            <span style={{
+              fontSize: '10px', padding: '2px 8px', borderRadius: '4px',
+              background: item.priority === 'high' ? 'rgba(239,68,68,0.1)' : item.priority === 'medium' ? 'rgba(251,191,36,0.1)' : 'rgba(16,185,129,0.1)',
+              color: item.priority === 'high' ? '#f87171' : item.priority === 'medium' ? '#fbbf24' : '#10b981',
+              fontFamily: 'JetBrains Mono, monospace', textTransform: 'uppercase'
+            }}>
+              {item.priority} · {item.estimated_time}
+            </span>
+          </div>
+          <p style={{ color: '#64748b', fontSize: '12px' }}>⚡ {item.quick_win}</p>
+        </div>
+      ))}
+    </div>
+  </div>
+)}
+
                               {/* Edit & Download button */}
                               <div style={{ paddingTop: '12px', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
                                 <button

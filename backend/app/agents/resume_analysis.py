@@ -106,6 +106,15 @@ Return ONLY a valid JSON object with this exact structure:
                 missing_skills=result.get("missing_skills", []),
                 matching_skills=result.get("matching_skills", [])
             )
+            # Generate learning roadmap for missing skills
+            if result.get("missing_skills") or result.get("experience_gaps"):
+                roadmap = await self._generate_learning_roadmap(
+                    missing_skills=result.get("missing_skills", []),
+                    experience_gaps=result.get("experience_gaps", []),
+                    job_title=result.get("job_title", ""),
+                    provider=provider
+                )
+                result["learning_roadmap"] = roadmap
             return result
         except json.JSONDecodeError:
             self.logger.error(f"Failed to parse analysis JSON: {clean[:200]}")
@@ -123,20 +132,13 @@ Return ONLY a valid JSON object with this exact structure:
         missing_skills: list,
         matching_skills: list
     ) -> float:
-        """
-        Cross-validate the LLM's score against the actual skill data.
-        Prevents hallucinated high scores on poor matches.
-        """
-        # Ensure score is a number
         try:
             score = float(score)
         except (TypeError, ValueError):
             score = 50.0
 
-        # Clamp to valid range
         score = max(10.0, min(95.0, score))
 
-        # Cross-check: too many missing skills = cap the score
         missing_count = len(missing_skills)
         matching_count = len(matching_skills)
 
@@ -147,14 +149,74 @@ Return ONLY a valid JSON object with this exact structure:
         elif missing_count >= 3:
             score = min(score, 72.0)
 
-        # Cross-check: very few matches = cap the score
         if matching_count == 0:
             score = min(score, 35.0)
         elif matching_count <= 2:
             score = min(score, 50.0)
 
-        # Cross-check: strong match ratio = allow higher scores
         if matching_count >= 6 and missing_count <= 2:
             score = max(score, 72.0)
 
         return round(score, 1)
+
+    async def _generate_learning_roadmap(
+        self,
+        missing_skills: list,
+        experience_gaps: list,
+        job_title: str,
+        provider: str
+    ) -> list:
+        if not missing_skills and not experience_gaps:
+            return []
+
+        prompt = f"""
+You are a career development coach specializing in tech roles.
+
+A candidate is missing these skills for a {job_title} role:
+Missing skills: {missing_skills}
+Experience gaps: {experience_gaps}
+
+Generate a practical learning roadmap. Return a JSON array:
+[
+    {{
+        "skill": "<skill name>",
+        "priority": "high|medium|low",
+        "estimated_time": "<e.g. 2 weeks, 1 month>",
+        "resources": [
+            {{
+                "type": "course|project|documentation|practice",
+                "title": "<resource name>",
+                "url": "<url if known, else null>",
+                "description": "<one line on what to do>"
+            }}
+        ],
+        "quick_win": "<one specific thing they can do THIS WEEK to start>"
+    }}
+]
+
+Rules:
+- Max 5 skills in the roadmap, prioritize the most critical ones
+- Resources must be real and free or cheap (freeCodeCamp, fast.ai, official docs, GitHub)
+- quick_win must be actionable in 1-3 days
+- Return ONLY the JSON array, no other text
+"""
+
+        response = await call_llm(
+            messages=[{"role": "user", "content": prompt}],
+            provider=provider,
+            temperature=0.3,
+            max_tokens=1500
+        )
+
+        clean = response.strip()
+        if clean.startswith("```"):
+            clean = clean.split("```")[1]
+            if clean.startswith("json"):
+                clean = clean[4:]
+        clean = clean.strip()
+
+        try:
+            return json.loads(clean)
+        except json.JSONDecodeError:
+            self.logger.error("Failed to parse learning roadmap JSON")
+            return []
