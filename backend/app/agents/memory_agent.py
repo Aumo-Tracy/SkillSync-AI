@@ -34,6 +34,7 @@ class MemoryAgent(BaseAgent):
             supabase.table("workflow_runs").update({
                 "output_data": {
                     "tailored_resumes": state.get("tailored_resumes", []),
+                    "interview_prep": state.get("interview_prep", []),
                     "company_research": state.get("company_research", []),
                     "approved_jobs": state.get("approved_jobs", []),
                     "resume_analyses": state.get("resume_analyses", [])

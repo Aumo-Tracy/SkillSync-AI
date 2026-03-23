@@ -95,6 +95,7 @@ export default function ApplicationsPage() {
             const outputData = workflow.output_data || {}
             const tailoredResumes = outputData.tailored_resumes || []
             const companyResearch = outputData.company_research || []
+            const interviewPrep = outputData.interview_prep || []
 
             return (
               <div key={workflow.id} style={{
@@ -290,7 +291,38 @@ export default function ApplicationsPage() {
                         </div>
                       </div>
                     )}
-
+                    {/* Interview Prep */}
+{interviewPrep.length > 0 && (
+  <div style={{ marginBottom: '20px' }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '12px' }}>
+      <p style={{ color: '#fbbf24', fontSize: '13px', fontWeight: 600 }}>🎯 Interview Prep</p>
+    </div>
+    {interviewPrep.map((prep: any, i: number) => (
+      <div key={i} style={{ marginBottom: '16px', padding: '16px', background: 'rgba(251,191,36,0.04)', border: '1px solid rgba(251,191,36,0.15)', borderRadius: '10px' }}>
+        <p style={{ color: 'white', fontSize: '14px', fontWeight: 600, marginBottom: '12px' }}>{prep.job_title} @ {prep.company}</p>
+        {prep.questions?.slice(0, 3).map((q: any, j: number) => (
+          <div key={j} style={{ marginBottom: '12px', paddingBottom: '12px', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+            <div style={{ display: 'flex', gap: '8px', marginBottom: '6px' }}>
+              <span style={{ fontSize: '10px', padding: '2px 6px', borderRadius: '4px', background: 'rgba(251,191,36,0.1)', color: '#fbbf24', fontFamily: 'JetBrains Mono, monospace', textTransform: 'uppercase', flexShrink: 0 }}>{q.type}</span>
+              <p style={{ color: '#e2e8f0', fontSize: '13px', fontWeight: 500 }}>{q.question}</p>
+            </div>
+            <p style={{ color: '#64748b', fontSize: '12px', lineHeight: '1.5', paddingLeft: '52px' }}>{q.suggested_answer}</p>
+          </div>
+        ))}
+        {prep.talking_points?.length > 0 && (
+          <div style={{ marginTop: '8px' }}>
+            <p style={{ color: '#64748b', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '6px' }}>Key Talking Points</p>
+            {prep.talking_points.map((point: string, j: number) => (
+              <p key={j} style={{ color: '#94a3b8', fontSize: '12px', display: 'flex', gap: '6px', marginBottom: '3px' }}>
+                <span style={{ color: '#fbbf24' }}>›</span>{point}
+              </p>
+            ))}
+          </div>
+        )}
+      </div>
+    ))}
+  </div>
+)}
                     {/* Company Research */}
                     {companyResearch.length > 0 && (
                       <div>
