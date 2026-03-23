@@ -19,6 +19,7 @@ class WorkflowState(MessagesState):
     resume_analyses: Annotated[list[dict], operator.add] = []
     tailored_resumes: Annotated[list[dict], operator.add] = []
     company_research: Annotated[list[dict], operator.add] = []
+    interview_prep: Annotated[list[dict], operator.add] = []
     
     # Control flow
     current_agent: str = ""
