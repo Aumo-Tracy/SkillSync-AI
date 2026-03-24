@@ -96,6 +96,7 @@ export default function ApplicationsPage() {
             const tailoredResumes = outputData.tailored_resumes || []
             const companyResearch = outputData.company_research || []
             const interviewPrep = outputData.interview_prep || []
+            const salaryData = outputData.salary_intelligence || []
 
             return (
               <div key={workflow.id} style={{
@@ -322,7 +323,59 @@ export default function ApplicationsPage() {
       </div>
     ))}
   </div>
+                    )}
+                    
+                    {/* Salary Intelligence */}
+{salaryData.length > 0 && (
+  <div style={{ marginBottom: '20px' }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '12px' }}>
+      <p style={{ color: '#10b981', fontSize: '13px', fontWeight: 600 }}>💰 Salary Intelligence</p>
+    </div>
+    {salaryData.map((sal: any, i: number) => (
+      <div key={i} style={{ marginBottom: '16px', padding: '16px', background: 'rgba(16,185,129,0.04)', border: '1px solid rgba(16,185,129,0.15)', borderRadius: '10px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+          <p style={{ color: 'white', fontSize: '14px', fontWeight: 600 }}>{sal.job_title}</p>
+          <span style={{ fontSize: '11px', padding: '3px 8px', borderRadius: '4px', background: 'rgba(16,185,129,0.1)', color: '#10b981', fontFamily: 'JetBrains Mono, monospace' }}>
+            Target: ${sal.recommended_ask?.toLocaleString()}
+          </span>
+        </div>
+        {sal.market_range && (
+          <div style={{ display: 'flex', gap: '12px', marginBottom: '12px' }}>
+            {[['Low', sal.market_range.low], ['Median', sal.market_range.median], ['High', sal.market_range.high]].map(([label, val]: any) => (
+              <div key={label} style={{ flex: 1, padding: '8px', background: 'rgba(255,255,255,0.03)', borderRadius: '6px', textAlign: 'center' }}>
+                <p style={{ color: '#64748b', fontSize: '10px', textTransform: 'uppercase', marginBottom: '2px' }}>{label}</p>
+                <p style={{ color: '#10b981', fontSize: '13px', fontWeight: 600 }}>${val?.toLocaleString()}</p>
+              </div>
+            ))}
+          </div>
+        )}
+        {sal.location_note && (
+          <p style={{ color: '#94a3b8', fontSize: '12px', marginBottom: '10px', fontStyle: 'italic' }}>💡 {sal.location_note}</p>
+        )}
+        {sal.negotiation_scripts?.initial_ask && (
+          <div style={{ marginBottom: '8px' }}>
+            <p style={{ color: '#64748b', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '6px' }}>When asked your expected salary</p>
+            <p style={{ color: '#94a3b8', fontSize: '12px', lineHeight: '1.6', padding: '10px', background: 'rgba(255,255,255,0.03)', borderRadius: '6px', borderLeft: '3px solid #10b981' }}>
+              "{sal.negotiation_scripts.initial_ask}"
+            </p>
+          </div>
+        )}
+        {sal.red_flags?.length > 0 && (
+          <div style={{ marginTop: '10px' }}>
+            <p style={{ color: '#64748b', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '6px' }}>⚠️ Watch out for</p>
+            {sal.red_flags.map((flag: string, j: number) => (
+              <p key={j} style={{ color: '#f87171', fontSize: '12px', display: 'flex', gap: '6px', marginBottom: '3px' }}>
+                <span>›</span>{flag}
+              </p>
+            ))}
+          </div>
+        )}
+      </div>
+    ))}
+  </div>
 )}
+
+
                     {/* Company Research */}
                     {companyResearch.length > 0 && (
                       <div>

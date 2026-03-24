@@ -7,6 +7,7 @@ from app.agents.resume_tailoring import ResumeTailoringAgent
 from app.agents.company_research import CompanyResearchAgent
 from app.agents.memory_agent import MemoryAgent
 from app.agents.interview_prep import InterviewPrepAgent
+from app.agents.salary_intelligence import SalaryIntelligenceAgent
 from app.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -18,6 +19,7 @@ resume_tailoring = ResumeTailoringAgent()
 company_research = CompanyResearchAgent()
 memory_agent = MemoryAgent()
 interview_prep_agent = InterviewPrepAgent()
+salary_agent = SalaryIntelligenceAgent()
 
 # Node wrapper functions
 async def run_job_discovery(state: WorkflowState) -> WorkflowState:
@@ -37,6 +39,9 @@ async def run_memory_agent(state: WorkflowState) -> WorkflowState:
 
 async def run_interview_prep(state: WorkflowState) -> WorkflowState:
     return await interview_prep_agent.run(state)
+
+async def run_salary_intelligence(state: WorkflowState) -> WorkflowState:
+    return await salary_agent.run(state)
 
 # HITL pause node
 async def hitl_job_approval(state: WorkflowState) -> WorkflowState:
@@ -69,6 +74,7 @@ def create_workflow_graph():
     graph.add_node("resume_analysis", run_resume_analysis)
     graph.add_node("resume_tailoring", run_resume_tailoring)
     graph.add_node("interview_prep", run_interview_prep)
+    graph.add_node("salary_intelligence", run_salary_intelligence)
     graph.add_node("company_research", run_company_research)
     graph.add_node("memory_agent", run_memory_agent)
 
@@ -98,7 +104,8 @@ def create_workflow_graph():
     # Sequential edges
     graph.add_edge("resume_analysis", "resume_tailoring")
     graph.add_edge("resume_tailoring", "interview_prep")
-    graph.add_edge("interview_prep", "company_research")
+    graph.add_edge("interview_prep", "salary_intelligence")
+    graph.add_edge("salary_intelligence", "company_research")
     graph.add_edge("company_research", "memory_agent")
     graph.add_edge("memory_agent", END)
 

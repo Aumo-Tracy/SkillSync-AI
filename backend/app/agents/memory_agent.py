@@ -37,7 +37,8 @@ class MemoryAgent(BaseAgent):
                     "interview_prep": state.get("interview_prep", []),
                     "company_research": state.get("company_research", []),
                     "approved_jobs": state.get("approved_jobs", []),
-                    "resume_analyses": state.get("resume_analyses", [])
+                    "resume_analyses": state.get("resume_analyses", []),
+                    "salary_intelligence": state.get("salary_intelligence", []),
                 },
                 "status": "completed",
                 "current_agent": None
