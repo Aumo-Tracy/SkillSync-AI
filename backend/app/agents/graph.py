@@ -57,63 +57,66 @@ def should_pause_for_approval(state: WorkflowState) -> str:
         return "end"
     if state.get("hitl_pause_point") == "job_approval":
         return "hitl_approval"
-    return "resume_analysis"
+    return "resume_analysis_node"
 
 def after_approval(state: WorkflowState) -> str:
     approved = state.get("approved_jobs", [])
     if not approved:
         return "end"
-    return "resume_analysis"
+    return "resume_analysis_node"
 
 def create_workflow_graph():
     graph = StateGraph(WorkflowState)
 
     # Register all nodes
-    graph.add_node("job_discovery", run_job_discovery)
-    graph.add_node("hitl_job_approval", hitl_job_approval)
-    graph.add_node("resume_analysis", run_resume_analysis)
-    graph.add_node("resume_tailoring", run_resume_tailoring)
-    graph.add_node("interview_prep_node", run_interview_prep)
-    graph.add_node("salary_intelligence", run_salary_intelligence)
-    graph.add_node("company_research", run_company_research)
-    graph.add_node("memory_agent", run_memory_agent)
+    # NOTE: node names must not match WorkflowState field names.
+    # Conflicting state keys: company_research, interview_prep, salary_intelligence
+    # All nodes suffixed with _node to avoid ALL potential conflicts.
+    graph.add_node("job_discovery_node",       run_job_discovery)
+    graph.add_node("hitl_job_approval_node",   hitl_job_approval)
+    graph.add_node("resume_analysis_node",     run_resume_analysis)
+    graph.add_node("resume_tailoring_node",    run_resume_tailoring)
+    graph.add_node("interview_prep_node",      run_interview_prep)
+    graph.add_node("salary_intelligence_node", run_salary_intelligence)
+    graph.add_node("company_research_node",    run_company_research)
+    graph.add_node("memory_agent_node",        run_memory_agent)
 
     # Entry point
-    graph.set_entry_point("job_discovery")
+    graph.set_entry_point("job_discovery_node")
 
     # Conditional edges
     graph.add_conditional_edges(
-        "job_discovery",
+        "job_discovery_node",
         should_pause_for_approval,
         {
-            "hitl_approval": "hitl_job_approval",
-            "resume_analysis": "resume_analysis",
+            "hitl_approval":      "hitl_job_approval_node",
+            "resume_analysis_node": "resume_analysis_node",
             "end": END
         }
     )
 
     graph.add_conditional_edges(
-        "hitl_job_approval",
+        "hitl_job_approval_node",
         after_approval,
         {
-            "resume_analysis": "resume_analysis",
+            "resume_analysis_node": "resume_analysis_node",
             "end": END
         }
     )
 
     # Sequential edges
-    graph.add_edge("resume_analysis", "resume_tailoring")
-    graph.add_edge("resume_tailoring", "interview_prep_node")
-    graph.add_edge("interview_prep_node", "salary_intelligence")
-    graph.add_edge("salary_intelligence", "company_research")
-    graph.add_edge("company_research", "memory_agent")
-    graph.add_edge("memory_agent", END)
+    graph.add_edge("resume_analysis_node",     "resume_tailoring_node")
+    graph.add_edge("resume_tailoring_node",    "interview_prep_node")
+    graph.add_edge("interview_prep_node",      "salary_intelligence_node")
+    graph.add_edge("salary_intelligence_node", "company_research_node")
+    graph.add_edge("company_research_node",    "memory_agent_node")
+    graph.add_edge("memory_agent_node",        END)
 
     # Compile with memory checkpointer
     checkpointer = MemorySaver()
     compiled = graph.compile(
         checkpointer=checkpointer,
-        interrupt_before=["hitl_job_approval"]
+        interrupt_before=["hitl_job_approval_node"]
     )
 
     logger.info("Workflow graph compiled successfully")
