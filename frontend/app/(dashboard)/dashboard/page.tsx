@@ -18,7 +18,7 @@ export default function DashboardPage() {
     const load = async () => {
       try {
         const [resumes, workflows] = await Promise.all([
-          resumeApi.list().catch(() => []),
+          resumeApi.getAll().catch(() => []),
           workflowApi.history().catch(() => [])
         ])
         setResumeCount(resumes?.length || 0)
