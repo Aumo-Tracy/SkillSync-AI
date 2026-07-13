@@ -6,14 +6,14 @@ python-dotenv==1.0.0
 pydantic==2.6.4
 pydantic-settings==2.2.1
 
-# LangChain + LangGraph
-langchain==0.1.4
-langchain-openai==0.0.5
-langchain-community==0.0.16
-langgraph==0.0.26
-openai==1.10.0
-tiktoken==0.5.2
-litellm==1.20.0
+langchain==0.2.16
+langchain-openai==0.1.23
+langchain-community==0.2.16
+langchain-core==0.2.38
+langgraph==0.2.6
+openai==1.40.0
+tiktoken==0.7.0
+litellm==1.44.0
 
 # HTTP
 httpx==0.24.1
