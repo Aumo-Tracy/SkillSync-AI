@@ -1,3 +1,4 @@
+import asyncio
 import json
 from app.agents.base import BaseAgent
 from app.agents.state import WorkflowState
@@ -27,6 +28,7 @@ class ResumeTailoringAgent(BaseAgent):
                 provider=user_profile.get("preferred_llm") or settings.default_llm_provider
             )
             tailored_resumes.append(tailored)
+            await asyncio.sleep(2)  # 2 second delay between calls
             self.logger.info(
                 f"Resume tailored | job={analysis.get('job_title')} | "
                 f"keywords_added={len(tailored.get('ats_keywords_added', []))}"

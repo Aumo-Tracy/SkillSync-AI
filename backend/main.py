@@ -11,7 +11,6 @@ from app.db.redis_client import get_redis_client, close_redis_client
 from app.db.supabase_client import get_supabase_client
 from app.api.routes import auth, workflow, jobs, resume, feedback
 import os
-from app.core.config import settings
 
 # LangSmith tracing
 if settings.langchain_tracing_v2 and settings.langchain_api_key:
@@ -53,22 +52,32 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="Resume Agent API", version="0.1.0", lifespan=lifespan)
 
-# Attach rate limiter
-app.state.limiter = limiter
-app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+# ── CORS ─────────────────────────────────────────────────────────────────────
+# Reads allowed origins from env so localhost works in dev
+# and your Vercel URL works in production — no code change needed.
+_raw_origins = os.environ.get(
+    "ALLOWED_ORIGINS",
+    "http://localhost:3000,http://localhost:3001"
+)
+allowed_origins = [o.strip() for o in _raw_origins.split(",") if o.strip()]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+# ─────────────────────────────────────────────────────────────────────────────
 
-app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
+# Rate limiter
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+app.include_router(auth.router,     prefix="/api/auth",     tags=["auth"])
 app.include_router(workflow.router, prefix="/api/workflow", tags=["workflow"])
-app.include_router(jobs.router, prefix="/api/jobs", tags=["jobs"])
-app.include_router(resume.router, prefix="/api/resume", tags=["resume"])
+app.include_router(jobs.router,     prefix="/api/jobs",     tags=["jobs"])
+app.include_router(resume.router,   prefix="/api/resume",   tags=["resume"])
 app.include_router(feedback.router, prefix="/api/feedback", tags=["feedback"])
 
 @app.get("/health")

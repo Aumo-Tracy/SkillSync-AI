@@ -10,8 +10,8 @@ class Settings(BaseSettings):
     # LLM
     openai_api_key: str
     gemini_api_key: str
-    default_llm_provider: str = "gemini"
-    default_llm_model: str = "gemini-2.0-pro"
+    default_llm_provider: str = "openai"
+    default_llm_model: str = "gpt-40-mini"
 
     # Supabase
     supabase_url: str = ""

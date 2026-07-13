@@ -1,4 +1,4 @@
-import json
+import asyncio
 from app.agents.base import BaseAgent
 from app.agents.state import WorkflowState
 from app.core.llm import call_llm
@@ -29,6 +29,7 @@ class ResumeAnalysisAgent(BaseAgent):
                 provider=user_profile.get("preferred_llm") or settings.default_llm_provider
             )
             analyses.append(analysis)
+            await asyncio.sleep(2)  # 2 second delay between calls
             self.logger.info(
                 f"Analysis complete | job={job.get('title')} | "
                 f"match_score={analysis.get('match_score')}"
