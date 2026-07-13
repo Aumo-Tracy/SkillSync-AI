@@ -73,7 +73,7 @@ def create_workflow_graph():
     graph.add_node("hitl_job_approval", hitl_job_approval)
     graph.add_node("resume_analysis", run_resume_analysis)
     graph.add_node("resume_tailoring", run_resume_tailoring)
-    graph.add_node("interview_prep", run_interview_prep)
+    graph.add_node("interview_prep_node", run_interview_prep)
     graph.add_node("salary_intelligence", run_salary_intelligence)
     graph.add_node("company_research", run_company_research)
     graph.add_node("memory_agent", run_memory_agent)
@@ -103,8 +103,8 @@ def create_workflow_graph():
 
     # Sequential edges
     graph.add_edge("resume_analysis", "resume_tailoring")
-    graph.add_edge("resume_tailoring", "interview_prep")
-    graph.add_edge("interview_prep", "salary_intelligence")
+    graph.add_edge("resume_tailoring", "interview_prep_node")
+    graph.add_edge("interview_prep_node", "salary_intelligence")
     graph.add_edge("salary_intelligence", "company_research")
     graph.add_edge("company_research", "memory_agent")
     graph.add_edge("memory_agent", END)
